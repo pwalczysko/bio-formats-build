@@ -15,6 +15,7 @@ COPY --chown=1000:1000 . /bio-formats-build
 USER 1000
 WORKDIR /bio-formats-build
 RUN git submodule update --init
+RUN git submodule foreach -q --recursive 'branch="$(git config -f $toplevel/.gitmodules submodule.$name.branch)"; git switch $branch'
 
 RUN python3 -m venv /bio-formats-build/venv
 ENV PATH="/bio-formats-build/venv/bin:$PATH"
@@ -24,7 +25,8 @@ RUN pip install -r ome-model/requirements.txt
 RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true
 
 WORKDIR /bio-formats-build/bioformats
-RUN ant jars tools -Djava.security.manager=allow
+
+# RUN ant jars tools
 
 ENV TZ="Europe/London"
 
