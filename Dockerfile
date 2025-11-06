@@ -21,7 +21,7 @@ ENV PATH="/bio-formats-build/venv/bin:$PATH"
 RUN pip install -r bio-formats-documentation/requirements.txt
 RUN pip install -r ome-model/requirements.txt
 
-RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true
+RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true -XDignore.symbol.file
 
 WORKDIR /bio-formats-build/bioformats
 RUN ant jars tools
