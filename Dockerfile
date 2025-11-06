@@ -1,5 +1,4 @@
 ARG BUILD_IMAGE=openjdk:8u322-jdk
-
 # Build image
 FROM ${BUILD_IMAGE}
 LABEL maintainer="ome-devel@lists.openmicroscopy.org.uk"
@@ -22,12 +21,12 @@ ENV PATH="/bio-formats-build/venv/bin:$PATH"
 RUN pip install -r bio-formats-documentation/requirements.txt
 RUN pip install -r ome-model/requirements.txt
 
-RUN mvn clean install -DskipSphinxTests
+RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true
 
 WORKDIR /bio-formats-build/bioformats
 RUN ant jars tools
 
-ENV TZ "Europe/London"
+ENV TZ="Europe/London"
 
 WORKDIR /bio-formats-build/bioformats/components/test-suite
 ENTRYPOINT ["/usr/bin/ant", "test-automated", "-Dtestng.directory=/data", "-Dtestng.configDirectory=/config"]
