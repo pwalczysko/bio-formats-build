@@ -7,6 +7,7 @@ USER root
 RUN apt-get -q update && apt-get -qy install maven \
    # ant \
    wget \
+   unzip \
    git \
    python3-venv
 
