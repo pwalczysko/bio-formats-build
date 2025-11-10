@@ -1,4 +1,4 @@
-ARG BUILD_IMAGE=openjdk:8u322-jdk
+ARG BUILD_IMAGE=openjdk:openjdk:26-ea-${{ matrix.jdk }}-jdk-slim-bookworm
 # Build image
 FROM ${BUILD_IMAGE}
 LABEL maintainer="ome-devel@lists.openmicroscopy.org.uk"
@@ -25,7 +25,7 @@ RUN pip install -r ome-model/requirements.txt
 # RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true
 
 WORKDIR /bio-formats-build/bioformats
-RUN ant clean jars tools
+RUN ant clean jars tools -Djava.security.manager=disallow
 
 ENV TZ="Europe/London"
 
