@@ -28,6 +28,7 @@ RUN pip install -r ome-model/requirements.txt
 
 WORKDIR /bio-formats-build/bioformats
 # Installs Ant
+USER root
 ENV ANT_VERSION 1.9.4
 RUN wget -q http://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.zip && \
   unzip apache-ant-${ANT_VERSION}-bin.zip && \
