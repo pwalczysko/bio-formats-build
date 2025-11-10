@@ -5,7 +5,7 @@ LABEL maintainer="ome-devel@lists.openmicroscopy.org.uk"
 
 USER root
 RUN apt-get -q update && apt-get -qy install maven \
-   ant \
+   # ant \
    git \
    python3-venv
 
@@ -25,7 +25,20 @@ RUN pip install -r ome-model/requirements.txt
 # RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true
 
 WORKDIR /bio-formats-build/bioformats
-RUN ant clean jars tools -Djava.security.manager=disallow
+# Installs Ant
+ENV ANT_VERSION 1.9.4
+RUN wget -q http://archive.apache.org/dist/ant/binaries/apache-ant-${ANT_VERSION}-bin.zip && \
+  unzip apache-ant-${ANT_VERSION}-bin.zip && \
+  mv apache-ant-${ANT_VERSION} /opt/ant && \
+  rm apache-ant-${ANT_VERSION}-bin.zip
+
+RUN useradd -m bf
+COPY . /opt/bioformats/
+RUN chown -R bf /opt/bioformats
+
+USER bf
+WORKDIR /opt/bioformats
+RUN /opt/ant/bin/ant clean jars tools
 
 ENV TZ="Europe/London"
 
