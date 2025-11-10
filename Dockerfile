@@ -25,7 +25,7 @@ RUN pip install -r ome-model/requirements.txt
 RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true
 
 WORKDIR /bio-formats-build/bioformats
-RUN ant jars tools -Djava.security.manager=allow
+RUN ant jars tools -Djava.security.manager=""
 
 ENV TZ="Europe/London"
 
