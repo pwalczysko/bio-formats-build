@@ -6,6 +6,7 @@ LABEL maintainer="ome-devel@lists.openmicroscopy.org.uk"
 USER root
 RUN apt-get -q update && apt-get -qy install maven \
    # ant \
+   wget \
    git \
    python3-venv
 
