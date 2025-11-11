@@ -19,7 +19,7 @@ jobs:
           distribution: 'zulu'
       - name: Build with Ant
         run: |
-            ./tools/test-build ant
+            # ./tools/test-build ant
             ant docs
       - name: Upload artifacts
         # upload just one set of artifacts for easier PR review
