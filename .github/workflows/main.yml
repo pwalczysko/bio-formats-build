@@ -24,6 +24,6 @@ jobs:
       - name: Build with Ant
         run: |
             pwd
-            ls
+            ls bioformats
             # ./tools/test-build ant
             ./bioformats/ant jars tools
