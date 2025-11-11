@@ -5,7 +5,7 @@ LABEL maintainer="ome-devel@lists.openmicroscopy.org.uk"
 
 USER root
 RUN apt-get -q update && apt-get -qy install maven \
-   ant=1.9.15 \
+   ant \
    git \
    python3-venv
 
@@ -26,7 +26,7 @@ RUN pip install -r ome-model/requirements.txt
 
 WORKDIR /bio-formats-build/bioformats
 
-# RUN ant jars tools -Djava.security.manager
+RUN ant jars tools -Djava.security.manager
 
 ENV TZ="Europe/London"
 
