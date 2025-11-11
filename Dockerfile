@@ -26,7 +26,7 @@ RUN mvn clean install -DskipSphinxTests -Dmaven.javadoc.skip=true
 
 WORKDIR /bio-formats-build/bioformats
 
-# RUN ant jars tools
+RUN ant jars tools
 
 ENV TZ="Europe/London"
 
