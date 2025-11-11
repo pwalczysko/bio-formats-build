@@ -1,0 +1,352 @@
+<!--
+java.xml
+
+Ant build file for logic common to Java-based components.
+All Java-based component build files inherit from this build file.
+Download Apache Ant from http://ant.apache.org/.
+Type "ant -p" for a list of targets.
+-->
+
+<project xmlns:resolver="antlib:org.apache.maven.resolver.ant">
+  <taskdef uri="antlib:org.apache.maven.resolver.ant" resource="org/apache/maven/resolver/ant/antlib.xml">
+    <classpath>
+      <fileset dir="${root.dir}/jar" includes="maven-resolver-ant-tasks-*.jar"/>
+    </classpath>
+  </taskdef>
+
+  <property file="${root.dir}/ant/java.properties"/>
+  <import file="${root.dir}/ant/common.xml"/>
+
+  <taskdef name="testng" classpath="${lib.dir}/testng-${testng.version}.jar"
+    classname="org.testng.TestNGAntTask"/>
+  <if>
+    <isset property="findbugs.home"/>
+    <then>
+      <taskdef name="findbugs" classpath="${findbugs.home}/findbugs-ant.jar${path.separator}${findbugs.home}/lib/findbugs-ant.jar" classname="edu.umd.cs.findbugs.anttask.FindBugsTask"/>
+    </then>
+  </if>
+  <condition property="doTests">
+    <available file="${tests.dir}"/>
+  </condition>
+
+  <resolver:pom file="pom.xml" id="pom"/>
+
+  <resolver:remoterepo id="ome" url="https://artifacts.openmicroscopy.org/artifactory/maven/" type="default" releases="true" snapshots="false"/>
+  <resolver:remoterepo id="unidata" url="https://artifacts.unidata.ucar.edu/repository/unidata-releases/" type="default" releases="true"/>
+  <resolver:remoterepo id="scijava" url="https://maven.scijava.org/content/groups/public/" type="default" releases="true"/>
+  <resolver:remoterepo id="jenkins" url="https://repo.jenkins-ci.org/releases/" type="default" releases="true"/>
+  <resolver:remoterepos id="resolver.repositories">
+    <resolver:remoterepo refid="central"/>
+    <resolver:remoterepo refid="scijava"/>
+    <resolver:remoterepo refid="ome"/>
+    <resolver:remoterepo refid="unidata"/>
+    <resolver:remoterepo refid="jenkins"/>
+  </resolver:remoterepos>
+  <!-- Main build targets -->
+
+  <target name="compile" depends="copy-resources" description="compile classes">
+    <mkdir dir="${classes.dir}"/>
+
+    <path id="compile.classpath"/>
+    <path id="runtime.classpath"/>
+    <resolver:resolve>
+      <dependencies>
+        <pom refid="pom"/>
+      </dependencies>
+      <path refid="compile.classpath" classpath="compile"/>
+      <path refid="runtime.classpath" classpath="runtime"/>
+    </resolver:resolve>
+
+    <javac
+      classpathref="compile.classpath"
+      debug="true"
+      includeAntRuntime="false"
+      fork="true"
+      deprecation="${component.deprecation}"
+      source="${component.java-version}"
+      target="${component.java-version}"
+      encoding="UTF-8"
+      srcdir="${src.dir}" destdir="${classes.dir}"
+      includes="${component.source}"/>
+      <!--<compilerarg value="-Xlint:unchecked"/>-->
+  </target>
+
+  <target name="compile-tests" depends="compile"
+    description="compile test classes" if="doTests">
+    <mkdir dir="${test-classes.dir}"/>
+
+    <path id="test.classpath"/>
+    <resolver:resolve>
+      <dependencies>
+        <pom refid="pom"/>
+      </dependencies>
+      <path refid="test.classpath" classpath="test"/>
+      <properties prefix="dep." classpath="test"/>
+    </resolver:resolve>
+
+    <javac
+      classpathref="test.classpath"
+      debug="true"
+      includeantruntime="false"
+      fork="true"
+      deprecation="${component.deprecation}"
+      source="${component.java-version}"
+      target="${component.java-version}"
+      encoding="UTF-8"
+      srcdir="${test.dir}" destdir="${test-classes.dir}"
+      includes="${component.source}">
+      <classpath refid="test.classpath"/>
+      <classpath path="${classes.dir}"/>
+    </javac>
+  </target>
+
+  <target name="exec" depends="compile" description="execute package">
+    <java fork="true" classname="${component.main-class}"
+      classpath="${classes.dir}">
+     <classpath refid="runtime.classpath"/>
+     </java>
+  </target>
+
+  <target name="test" depends="jar, compile-tests"
+    description="run tests" if="doTests">
+    <!-- run TestNG tests -->
+    <if>
+      <isset property="testng.xml"/>
+      <then>
+        <testng haltonfailure="true" groups="all" testname="${component.name}">
+          <classpath refid="test.classpath"/>
+          <classpath>
+            <pathelement location="${root.dir}/ant/"/><!-- logback.xml -->
+            <pathelement location="${test-classes.dir}"/>
+            <pathelement location="${test.dir}"/>
+          </classpath>
+          <sysproperty key="bioformats_can_do_upgrade_check" value="false"/>
+          <xmlfileset file="${testng.xml}"/>
+          <jvmarg value="-mx${testng.memory}"/>
+        </testng>
+      </then>
+    </if>
+  </target>
+
+  <target name="findbugs" depends="jar"
+    description="check source code for bugs">
+    <mkdir dir="${build.dir}"/>
+    <if>
+      <isset property="findbugs.home"/>
+      <then>
+        <findbugs home="${findbugs.home}" jvmargs="-Xmx512m"
+          output="xml:withMessages" outputFile="${build.dir}/findbugs.xml"
+          excludeFilter="${root.dir}/excludebugs.xml" reportLevel="medium"
+          errorProperty="findbugsErrors"
+          warningsProperty="findbugsWarnings">
+          <auxClasspath refid="runtime.classpath"/>
+          <sourcePath path="${src.dir}"/>
+          <class location="${classes.dir}"/>
+        </findbugs>
+
+        <if>
+          <isset property="findbugsErrors"/>
+          <then>
+            <fail message="FindBugs produced one or more errors."/>
+          </then>
+        </if>
+        <if>
+          <isset property="findbugsWarnings"/>
+          <then>
+            <fail message="FindBugs produced one or more warnings."/>
+          </then>
+        </if>
+      </then>
+      <else>
+<echo>
+Please set the findbugs.home property to point to
+your FindBugs installation's lib directory. E.g.:
+  ant -Dfindbugs.home=${user.home}/findbugs/lib findbugs
+</echo>
+        <fail message="FindBugs not found."/>
+      </else>
+    </if>
+  </target>
+
+  <target name="style" depends="compile"
+    description="check source code style">
+    <checkstyle config="${root.dir}/checkstyle.xml" failOnViolation="false"
+      classpath="${classes.dir}">
+      <classpath refid="compile.classpath"/>
+      <fileset dir="${src.dir}" includes="${component.source}"/>
+    </checkstyle>
+  </target>
+
+  <target name="jar" depends="compile,init-timestamp" description="generate JAR file">
+    <mkdir dir="${artifact.dir}"/>
+    <pathconvert property="manifest.classpath" pathsep=" ">
+      <path refid="runtime.classpath"/>
+      <mapper>
+        <chainedmapper>
+          <flattenmapper/>
+          <globmapper from="*.jar" to="*.jar"/>
+        </chainedmapper>
+      </mapper>
+    </pathconvert>
+    <jar jarfile="${artifact.dir}/${component.jar}" basedir="${classes.dir}">
+      <metainf dir="${basedir}" includes="lib/**/*"/>
+      <manifest>
+        <attribute name="Main-Class" value="${component.main-class}"/>
+        <attribute name="Class-Path" value="${manifest.classpath}"/>
+        <attribute name="Implementation-Title" value="${component.name}"/>
+        <attribute name="Implementation-Version" value="${release.version}"/>
+        <attribute name="Implementation-Vendor-Id" value="ome"/>
+        <attribute name="Implementation-Date" value="${DATE}"/>
+        <attribute name="Implementation-Vendor" value="Open Microscopy Environment"/>
+        <attribute name="Implementation-Build" value="${build.version}"/>
+        <attribute name="Implementation-URL" value="https://www.openmicroscopy.org/bio-formats/"/>
+      </manifest>
+    </jar>
+    <resolver:artifacts id="jar">
+      <artifact file="${artifact.dir}/${component.jar}" type="jar" />
+    </resolver:artifacts>
+    <resolver:install artifactsref="jar"/>
+  </target>
+
+  <target name="bundle" depends="init-timestamp" description="create bundle JAR">
+    <mkdir dir="${artifact.dir}"/>
+    <resolver:resolve>
+      <dependencies>
+        <pom refid="pom"/>
+      </dependencies>
+      <path refid="runtime.classpath" classpath="runtime"/>
+    </resolver:resolve>
+
+    <!-- Unzip the content of the runtime classpath to create the uberJAR -->
+    <unzip dest="${build.dir}/unzip">
+      <path refid="runtime.classpath"/>
+    </unzip>
+
+    <!-- Merge ucar.nc2.filter.FilterProvider files -->
+    <pathconvert property="runtimePaths.string" refid="runtime.classpath" pathsep="${line.separator}"/>
+    <echo file="${build.dir}/unzip/runtimePaths.txt">${runtimePaths.string}</echo>
+    <loadfile property="cdmcorePath" srcFile="${build.dir}/unzip/runtimePaths.txt">
+      <filterchain>
+        <linecontains>
+          <contains value="cdm-core"/>
+        </linecontains>
+        <striplinebreaks/>
+      </filterchain>
+    </loadfile>
+    <loadfile property="formatsgplPath" srcFile="${build.dir}/unzip/runtimePaths.txt">
+      <filterchain>
+        <linecontains>
+          <contains value="formats-gpl"/>
+        </linecontains>
+        <striplinebreaks/>
+      </filterchain>
+    </loadfile>
+    <concat destfile="${build.dir}/unzip/META-INF/services/ucar.nc2.filter.FilterProvider" fixlastline="yes">
+      <zipentry zipfile="${cdmcorePath}" name="META-INF/services/ucar.nc2.filter.FilterProvider"/>
+      <zipentry zipfile="${formatsgplPath}" name="META-INF/services/ucar.nc2.filter.FilterProvider"/>
+    </concat>
+
+    <jar destfile="${artifact.dir}/${bundle.jar}" filesetmanifest="skip">
+      <zipfileset dir="${build.dir}/unzip"/>
+      <manifest>
+        <attribute name="Main-Class" value="${bundle.main-class}"/>
+        <attribute name="Implementation-Title" value="${bundle.name}"/>
+        <attribute name="Implementation-Version" value="${bundle.version}"/>
+        <attribute name="Implementation-Vendor-Id" value="ome"/>
+        <attribute name="Implementation-Date" value="${DATE}"/>
+        <attribute name="Implementation-Vendor" value="Open Microscopy Environment"/>
+        <attribute name="Implementation-Build" value="${build.version}"/>
+        <attribute name="Implementation-URL" value="https://www.openmicroscopy.org/bio-formats/"/>
+      </manifest>
+    </jar>
+    <delete dir="${build.dir}/unzip"/>
+    <resolver:artifacts id="bundle">
+      <artifact file="${artifact.dir}/${bundle.jar}"  type="jar" />
+    </resolver:artifacts>
+    <resolver:install artifactsref="bundle"/>
+  </target>
+
+  <target name="utils" depends="jar"
+    description="compile extra utilities">
+    <delete>
+      <fileset dir="${utils.dir}" includes="**/*.class"/>
+    </delete>
+    <javac debug="true" includeantruntime="false" fork="true"
+      deprecation="true" source="1.8" target="1.8"
+      encoding="UTF-8"
+      srcdir="${utils.dir}" includes="**/*.java"
+      classpath="${artifact.dir}/${component.jar}">
+      <classpath refid="compile.classpath" />
+      <!--<compilerarg value="-Xlint:unchecked"/>-->
+    </javac>
+  </target>
+
+  <target name="docs" depends="compile, javadoc-properties"
+    description="generate javadocs">
+    <javadoc sourcepath="${src.dir}" destdir="${docs.dir}/api"
+      encoding="UTF-8"
+      author="true" version="true" use="true"
+      access="private"
+      nodeprecated="false" windowtitle="Bio-Formats API"
+      additionalparam="${javadoc.doclint}">
+      <packageset dir="${src.dir}"/>
+      <classpath refid="runtime.classpath"/>
+      <doctitle><![CDATA[<h1>Bio-Formats</h1>]]></doctitle>
+      <bottom><![CDATA[${copyright.begin} ${YEAR} ${copyright.end}]]></bottom>
+      <link href="http://docs.oracle.com/javase/8/docs/api/"/>
+      <link href="https://imagej.net/developer/api/"
+            offline="true" packagelistLoc="${root.dir}/ant/package-list"/>
+    </javadoc>
+  </target>
+
+  <target name="clean-classes" description="remove classes from build folder">
+    <delete dir="${classes.dir}"/>
+  </target>
+
+  <target name="clean-dist"
+    description="remove distribution bundles from build folder">
+    <delete dir="${dist.dir}"/>
+  </target>
+
+  <target name="clean-docs" description="remove javadocs from build folder">
+    <delete dir="${docs.dir}"/>
+  </target>
+
+  <target name="clean-jar" description="remove JAR file from artifacts folder">
+    <delete>
+      <fileset dir="${artifact.dir}" includes="${component.jar}"/>
+    </delete>
+  </target>
+
+  <!-- Internal build targets -->
+
+  <target name="init"
+    depends="init-title, init-timestamp"/>
+
+  <target name="copy-resources" depends="init">
+    <!-- copy binary resources -->
+    <mkdir dir="${classes.dir}"/>
+    <copy todir="${classes.dir}" preservelastmodified="true">
+      <!--
+        include (none) to prevent problems if component.resources-bin is empty
+      -->
+      <fileset dir="${src.dir}" includes="(none) ${component.resources-bin}"/>
+      <fileset dir="${src.dir}" includes="(none) ${component.resources-text}"/>
+    </copy>
+    <!-- copy source files and text resources with filtering -->
+  </target>
+
+  <target name="copy-test-resources" depends="compile" if="doTests">
+    <!-- copy binary resources -->
+    <mkdir dir="${test.dir}"/>
+    <copy todir="${test.dir}" preservelastmodified="true">
+      <!--
+        include (none) to prevent problems if component.resources-bin is empty
+      -->
+      <fileset dir="${src.dir}" includes="(none) ${component.resources-bin}"/>
+      <fileset dir="${src.dir}" includes="(none) ${component.resources-text}"/>
+    </copy>
+    <!-- copy source files and text resources with filtering -->
+  </target>
+
+</project>
