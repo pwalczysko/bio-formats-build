@@ -23,5 +23,7 @@ jobs:
           distribution: 'zulu'
       - name: Build with Ant
         run: |
+            pwd
+            ls
             # ./tools/test-build ant
             ./bioformats/ant jars tools
