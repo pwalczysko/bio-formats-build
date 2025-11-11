@@ -26,7 +26,7 @@ RUN pip install -r ome-model/requirements.txt
 
 WORKDIR /bio-formats-build/bioformats
 
-RUN ant jars tools -Djava.security.manager
+# RUN ant jars tools -Djava.security.manager
 
 ENV TZ="Europe/London"
 
