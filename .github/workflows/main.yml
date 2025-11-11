@@ -24,4 +24,4 @@ jobs:
       - name: Build with Ant
         run: |
             # ./tools/test-build ant
-            ant docs
+            ./bioformats/ant jars tools
