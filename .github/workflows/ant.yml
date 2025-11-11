@@ -20,6 +20,7 @@ jobs:
       - name: Build with Ant
         run: |
             # ./tools/test-build ant
+            ant jars tools
             #ant docs
       - name: Upload artifacts
         # upload just one set of artifacts for easier PR review
