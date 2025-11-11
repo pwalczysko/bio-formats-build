@@ -9,21 +9,10 @@ jobs:
   build:
     strategy:
       matrix:
-        jdk: [17, 8, 11]
+        jdk: [8, 11]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
       - name: Build
-        run: docker build -t bio-formats-build . --build-arg BUILD_IMAGE=openjdk:26-ea-${{ matrix.jdk }}-jdk-slim-bookworm
-      - name: Set up JDK ${{ matrix.jdk }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ matrix.jdk }}
-          distribution: 'zulu'
-      - name: Build with Ant
-        run: |
-            pwd
-            ls bioformats
-            # ./tools/test-build ant
-            ./bioformats/ant jars tools
+        run: docker build -t bio-formats-build . --build-arg BUILD_IMAGE=openjdk:26-ea-${{ matrix.jdk }}-jdk-slim-trixie
